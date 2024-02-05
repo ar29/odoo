@@ -1,0 +1,19 @@
+<!-- room_booking/templates/room_booking/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Room Booking</title>
+    <!-- Add necessary CSS and JS links here -->
+</head>
+<body>
+    <h1>Welcome to Room Booking</h1>
+    <form method="post" action="{% url 'index' %}">
+        {% csrf_token %}
+        <label for="phone_number">Enter your phone number:</label>
+        <input type="text" id="phone_number" name="phone_number" required>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>

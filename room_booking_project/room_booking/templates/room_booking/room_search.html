@@ -1,0 +1,534 @@
+<!-- room_booking/templates/room_booking/room_search.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Room Search</title>
+    {% csrf_token %}
+    <!-- Add necessary CSS and JS links here -->
+    <style>
+        /* Updated CSS styling for the room cards */
+        .room-card {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+            width: 25%; /* Occupy 25% of the screen width */
+            box-sizing: border-box; /* Include padding and border in the width calculation */
+            display: inline-block;
+            vertical-align: top;
+            display: block; /* Display as block element */
+            clear: both; /* Clear the float property */
+        }
+        .room-number {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .tags {
+            display: flex;
+        }
+        .tag-badge {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            margin-right: 5px;
+        }
+        .capacity {
+            font-size: 14px;
+        }
+
+        .booking-card {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+            width: 70%; /* Occupy 70% of the screen width */
+            box-sizing: border-box;
+            position: absolute;
+            display: none; /* Initially hidden */
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-gap: 5px;
+            margin-top: 10px;
+        }
+
+        .day-of-week {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .day {
+            text-align: center;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .day-time-grid {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .day, .time-slot {
+            box-sizing: border-box;
+            width: 50px; /* Adjust the width as needed */
+            height: 50px; /* Adjust the height as needed */
+            border: 1px solid #ccc;
+            margin: 5px;
+            text-align: center;
+            line-height: 50px;
+            cursor: pointer;
+        }
+
+        .available {
+            background-color: white;
+        }
+
+        .booked-by-current-user {
+            background-color: #7FFF7F; /* Green background color for current user's bookings */
+        }
+
+        .booked-by-other-user {
+            background-color: #FF7F7F; /* Red background color for bookings by other users */
+        }
+
+        .time-slot-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .time-slot {
+            box-sizing: border-box;
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            width: 120px; /* Adjust as needed */
+            text-align: center;
+        }
+        .time-slot.selected {
+            background-color: green;
+            color: white; /* Optionally, change text color for better visibility */
+        }
+        .selected {
+            background-color: #7FFF7F; /* Green background color for selected time slot */
+        }
+
+        .available {
+            background-color: #FFFFFF; /* White background color for available time slots */
+            color: #333; /* Text color for available time slots */
+        }
+
+        .booked-by-current-user {
+            background-color: #7FFF7F; /* Green background color for time slots booked by the current user */
+            color: #333; /* Text color for time slots booked by the current user */
+        }
+
+        .booked-by-other-user {
+            background-color: #FF7F7F; /* Red background color for time slots booked by other users */
+            color: #FFF; /* Text color for time slots booked by other users */
+        }
+    </style>
+</head>
+<body>
+    <h1>Room Search</h1>
+    <form id="search_form">
+        <label for="search_query">Smart Search:</label>
+        <input type="text" id="search_query" name="search_query">
+        <input type="submit" value="Search">
+    </form>
+    
+    <div id="search_results">
+        <!-- Display search results here -->
+    </div>
+    {% include 'room_booking/time_slots.html' with time_slots=available_time_slots %}
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#search_form').submit(function(e) {
+                e.preventDefault();
+                var searchQuery = $('#search_query').val().trim();
+                
+                // Send AJAX request to the server to perform the smart search
+                $.ajax({
+                    type: 'POST',
+                    url: '{% url "room_search" %}',
+                    data: {
+                        'search_query': searchQuery,
+                        'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        // Update #search_results with the received JSON data
+                        var resultsHtml = '';
+                        data.rooms.forEach(function(room) {
+                            // Generate HTML for each room card
+                            resultsHtml += '<div class="room-card">';
+                            resultsHtml += '<p class="room-number">' + room.room_number + '</p>';
+                            
+                            // Render tags as badges
+                            resultsHtml += '<div class="tags">';
+                            room.tags.forEach(function(tag) {
+                                resultsHtml += '<span class="tag-badge">' + tag + '</span>';
+                            });
+                            resultsHtml += '</div>';
+                            
+                            resultsHtml += '<p class="capacity">' + room.capacity + ' seat capacity</p>';
+                            resultsHtml += '</div>';
+                        });
+                        $('#search_results').html(resultsHtml);
+                    },
+                    error: function(error) {
+                        console.log(error);
+                        // Handle errors, e.g., display an error message
+                        $('#search_results').html('<p>Error fetching search results.</p>');
+                    }
+                });
+            });
+            
+            // Event handler for clicking on a time slot
+                $('#time_slots').on('click', '.time-slot', function() {
+                // Toggle the 'selected' class and change background color
+                $(this).toggleClass('selected');
+            });
+            
+            // Click event for room cards
+            $('#search_results').on('click', '.room-card', function(e) {
+                // Prevent the default behavior of the anchor (if it's a link)
+                e.preventDefault();
+
+                // Get the position of the clicked room card
+                var roomCardPosition = $(this).offset();
+                // Create a string to hold all tags
+                var tagsHtml = '';
+
+                // Iterate over tags and add them to the string
+                $(this).find('.tag-badge').children().each(function() {
+                    tagsHtml += '<span class="tag">' + $(this).text() + '</span>';
+                });
+
+                // Generate booking card dynamically
+                var bookingCardHtml = '<div class="booking-card">';
+                bookingCardHtml += '<div class="room-info">';
+                bookingCardHtml += '<h2>' + $(this).find('.room-number').text() + '</h2>';
+                bookingCardHtml += '<div class="tags">' + tagsHtml + '</div>';
+                bookingCardHtml += '<p>' + $(this).find('.capacity').text() + '</p>';
+                bookingCardHtml += '<button id="book-button">Book</button>';
+                bookingCardHtml += '</div>';
+                bookingCardHtml += '<div class="calendar" id="monthly_calendar"></div>';
+                bookingCardHtml += '<div class="time-slots" id="time_slots"></div>';
+                bookingCardHtml += '</div>';
+
+                // Append the booking card to the body
+                $('body').append(bookingCardHtml);
+
+                // Set the position of the booking card adjacent to the clicked room card
+                var bookingCard = $('.booking-card');
+                bookingCard.css({
+                    top: roomCardPosition.top,
+                    left: roomCardPosition.left + $(this).outerWidth() + 10 // Add extra spacing
+                });
+
+                // Show the booking card
+                bookingCard.show();
+
+                var timeSlotsContainer = $('#time_slots');
+                $.get('/room_booking/time_slots/', {'time_slots': JSON.stringify(available_time_slots)}, function(data) {
+                    timeSlotsContainer.html(data);
+                });
+
+                // Load calendar using monthly_calendar.html template
+                var calendarContainer = $('#monthly_calendar');
+                $.get('/room_booking/monthly_calendar/', {'weeks': JSON.stringify(your_weeks_data)}, function(data) {
+                    calendarContainer.html(data);
+                });
+
+
+                // Generate monthly calendar
+                generateMonthlyCalendar('#monthly_calendar');
+                
+                // Generate time slots
+                var available_time_slots = generateTimeSlots();
+
+                var your_weeks_data = getWeeksData();
+                
+            });
+        });
+
+        // Function to get weeks data (replace with our actual logic)
+        function getWeeksData() {
+            // Make an AJAX request to fetch weeks data from the server
+            $.ajax({
+                url: '/room_booking/monthly_calendar/',  // Replace with the actual endpoint URL
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                // Handle the successful response and use the data
+                console.log('Weeks data:', response);
+                // Assuming response is in the format you expect, modify this part as needed
+                renderWeeks(response);
+                },
+                error: function(error) {
+                // Handle the error
+                console.error('Error fetching weeks data:', error);
+                }
+            });
+        }
+
+
+        // Function to render weeks data on the frontend (replace with our actual rendering logic)
+        function renderWeeks(weeksData) {
+            // Assuming we have a container element with the ID 'weekly-calendar' in our HTML
+            var calendarContainer = $('#weekly-calendar');
+            
+            // Clear previous content
+            calendarContainer.empty();
+
+            // Iterate through each week in the data
+            for (var i = 0; i < weeksData.length; i++) {
+                // Create a new week container
+                var weekContainer = $('<div class="week"></div>');
+
+                // Iterate through each day in the week
+                for (var j = 0; j < weeksData[i].length; j++) {
+                // Create a day element
+                var dayElement = $('<div class="day"></div>');
+
+                // Set the text content and apply styles based on data properties
+                dayElement.text(weeksData[i][j].date);
+                if (weeksData[i][j].is_available) {
+                    dayElement.addClass('available');
+                }
+                if (weeksData[i][j].booked_by_current_user) {
+                    dayElement.addClass('booked-by-current-user');
+                }
+                if (weeksData[i][j].booked_by_other_user) {
+                    dayElement.addClass('booked-by-other-user');
+                }
+
+                // Append the day element to the week container
+                weekContainer.append(dayElement);
+                }
+
+                // Append the week container to the calendar container
+                calendarContainer.append(weekContainer);
+            }
+        }
+
+
+        // Function to generate monthly calendar
+        function generateMonthlyCalendar(calendarId) {
+            var daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+            var calendarHtml = '<div class="day-of-week">' + daysOfWeek.join('</div><div class="day-of-week">') + '</div>';
+
+            // Dummy data for demonstration (replace with actual data)
+            var daysInMonth = 30;
+            var startingDayOfWeek = 3; // Assuming Wednesday as the starting day
+
+            for (var i = 1; i <= daysInMonth; i++) {
+                calendarHtml += '<div class="day" style="grid-column: ' + (i + startingDayOfWeek) % 7 + ';">' + i + '</div>';
+            }
+
+            // Append the calendar to the specified element
+            $(calendarId).html(calendarHtml);
+        }
+
+        function generateTimeSlots() {
+            var start_time = moment("10:00", "HH:mm");
+            var end_time = moment("18:00", "HH:mm");
+            var time_slots = [];
+
+            while (start_time.isSameOrBefore(end_time.subtract(30, 'minutes'))) {
+                var end_slot = start_time.clone().add(30, 'minutes');
+                time_slots.push({
+                'start_time': start_time.format("HH:mm"),
+                'end_time': end_slot.format("HH:mm"),
+                'display_text': start_time.format("HH:mm") + ' - ' + end_slot.format("HH:mm")
+                });
+                start_time.add(30, 'minutes');
+            }
+
+            return time_slots;
+        }
+
+
+        // Function to check if a day is available
+        function isDayAvailable(roomId, day) {
+            var ajaxUrl = '/check_day_availability/' + roomId + '/' + day + '/';
+
+            var result = false;
+
+            // Send AJAX request to check if the day is available
+            $.ajax({
+                type: 'GET',
+                url: ajaxUrl,
+                async: false,  // Ensure synchronous request for simplicity (not recommended in production)
+                success: function(response) {
+                result = response.day_available;
+                },
+                error: function(error) {
+                console.error(error);
+                }
+            });
+
+        return result;
+        }
+
+        // Function to check if a day is booked by the current user
+        function isDayBookedByCurrentUser(roomId, day) {
+            var ajaxUrl = '/check_day_booking/' + roomId + '/' + day + '/';
+
+            var result = false;
+
+            // Send AJAX request to check if the day is booked by the current user
+            $.ajax({
+                type: 'GET',
+                url: ajaxUrl,
+                async: false,  // Ensure synchronous request for simplicity (not recommended in production)
+                success: function(response) {
+                result = response.booked_by_current_user;
+                },
+                error: function(error) {
+                console.error(error);
+                }
+            });
+
+            return result;
+        }
+
+
+        // Function to check if a day is booked by another user
+        function isDayBookedByOtherUser(roomId, day) {
+            var ajaxUrl = '/check_day_booking_other_user/' + roomId + '/' + day + '/';
+
+            var result = false;
+
+            // Send AJAX request to check if the day is booked by another user
+            $.ajax({
+                type: 'GET',
+                url: ajaxUrl,
+                async: false,  // Ensure synchronous request for simplicity (not recommended in production)
+                success: function(response) {
+                result = response.booked_by_other_user;
+                },
+                error: function(error) {
+                console.error(error);
+                }
+            });
+
+            return result;
+        }
+
+
+        // Function to check if a time slot is available
+        function isTimeSlotAvailable(roomId, day, currentTime) {
+            var ajaxUrl = '/check_time_slot_availability/' + roomId + '/' + day + '/' + currentTime + '/';
+
+            var result = false;
+
+            // Send AJAX request to check if the time slot is available
+            $.ajax({
+                type: 'GET',
+                url: ajaxUrl,
+                async: false,  // Ensure synchronous request for simplicity (not recommended in production)
+                success: function(response) {
+                result = response.time_slot_available;
+                },
+                error: function(error) {
+                console.error(error);
+                }
+            });
+
+            return result;
+        }
+
+        // Function to check if a time slot is booked by the current user
+        function isTimeSlotBookedByCurrentUser(roomId, day, currentTime) {
+            var ajaxUrl = '/check_time_slot_booking_current_user/' + roomId + '/' + day + '/' + currentTime + '/';
+
+            var result = false;
+
+            // Send AJAX request to check if the time slot is booked by the current user
+            $.ajax({
+                type: 'GET',
+                url: ajaxUrl,
+                async: false,  // Ensure synchronous request for simplicity (not recommended in production)
+                success: function(response) {
+                result = response.time_slot_booked_by_current_user;
+                },
+                error: function(error) {
+                console.error(error);
+                }
+            });
+
+            return result;
+        }
+
+
+        // Function to check if a time slot is booked by another user
+        function isTimeSlotBookedByOtherUser(roomId, day, currentTime) {
+        var ajaxUrl = '/check_time_slot_booking_other_user/' + roomId + '/' + day + '/' + currentTime + '/';
+
+        var result = false;
+
+        // Send AJAX request to check if the time slot is booked by another user
+        $.ajax({
+            type: 'GET',
+            url: ajaxUrl,
+            async: false,  // Ensure synchronous request for simplicity (not recommended in production)
+            success: function(response) {
+            result = response.time_slot_booked_by_other_user;
+            },
+            error: function(error) {
+            console.error(error);
+            }
+        });
+
+        return result;
+        }
+
+        // Function to handle click events on days or time slots
+        function handleDayTimeClick(element, isDay) {
+            if ($(element).hasClass('available')) {
+                // Handle click for available day or time slot
+                console.log('Clicked on an available ' + (isDay ? 'day' : 'time slot'));
+            } else {
+                // Handle click for booked day or time slot
+                console.log('Clicked on a booked ' + (isDay ? 'day' : 'time slot'));
+            }
+        }
+
+        // Click event for day or time slot elements
+        $('.day-time-grid').on('click', '.day, .time-slot', function() {
+            handleDayTimeClick(this, $(this).hasClass('day'));
+        });
+
+        // Function to handle click events on days or time slots
+        function handleDayTimeClick(element, isDay) {
+            if ($(element).hasClass('available')) {
+                // Handle click for available day or time slot
+                console.log('Clicked on an available ' + (isDay ? 'day' : 'time slot'));
+
+                // Toggle background color to green on click
+                $(element).toggleClass('selected');
+            } else {
+                // Handle click for booked day or time slot
+                console.log('Clicked on a booked ' + (isDay ? 'day' : 'time slot'));
+            }
+        }
+
+        // Click event for day or time slot elements
+        $('.day-time-grid, .time-slot-container').on('click', '.day, .time-slot', function() {
+            handleDayTimeClick(this, $(this).hasClass('day'));
+        });
+
+        
+
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+</body>
+</html>

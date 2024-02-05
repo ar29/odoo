@@ -1,0 +1,26 @@
+<!-- room_booking/templates/room_booking/book_room.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="booking-card">
+    <div class="room-info">
+      <h2>{{ room.room_number }}</h2>
+      <div class="tags">
+        {% for tag in room.tags.all %}
+          <span class="tag-badge">{{ tag.name }}</span>
+        {% endfor %}
+      </div>
+      <p>{{ room.capacity }} seat capacity</p>
+      <button id="book-button">Book</button>
+    </div>
+    <div class="calendar">
+      <!-- Monthly calendar goes here -->
+      {% include 'room_booking/monthly_calendar.html' %}
+    </div>
+    <div class="time-slots">
+      <!-- Time slots go here -->
+      {% include 'room_booking/time_slots.html' %}
+    </div>
+  </div>
+{% endblock %}

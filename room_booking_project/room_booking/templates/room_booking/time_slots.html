@@ -1,0 +1,10 @@
+<!-- room_booking/templates/room_booking/time_slots.html -->
+
+<div class="time-slot-container">
+    {% for time_slot in time_slots %}
+      <span class="time-slot {% if time_slot.is_available %}available{% endif %}{% if time_slot.booked_by_current_user %} booked-by-current-user{% endif %}{% if time_slot.booked_by_other_user %} booked-by-other-user{% endif %}" data-time="{{ time_slot.start_time }}">
+        {{ time_slot.start_time }} - {{ time_slot.end_time }}
+      </span>
+    {% endfor %}
+  </div>
+  

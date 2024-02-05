@@ -1,0 +1,48 @@
+<!-- room_booking/templates/room_booking/room_search.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Room Search</title>
+</head>
+<body>
+    <h1>Room Search</h1>
+    <form id="search_form">
+        <label for="tags">Search by tag (comma-separated):</label>
+        <input type="text" id="tags" name="tags">
+        <input type="submit" value="Search">
+    </form>
+    
+    <div id="search_results">
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#search_form').submit(function(e) {
+                e.preventDefault();
+                var tags = $('#tags').val().trim();
+                
+                // Send AJAX request to the server to perform the room search
+                $.ajax({
+                    type: 'POST',
+                    url: '{% url "room_search" %}',
+                    data: { 'tags': tags },
+                    success: function(data) {
+                        // Update #search_results with the received JSON data
+                        var resultsHtml = '';
+                        data.rooms.forEach(function(room) {
+                            resultsHtml += '<p>Room ' + room.room_number + ' - Capacity: ' + room.capacity + ' - Tags: ' + room.tags.join(', ') + '</p>';
+                        });
+                        $('#search_results').html(resultsHtml);
+                    },
+                    error: function(error) {
+                        console.log(error);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!-- room_booking/templates/room_booking/monthly_calendar.html -->
+
+<div class="day-of-week">
+    <div class="weekday">S</div>
+    <div class="weekday">M</div>
+    <div class="weekday">T</div>
+    <div class="weekday">W</div>
+    <div class="weekday">T</div>
+    <div class="weekday">F</div>
+    <div class="weekday">S</div>
+</div>
+
+{% for week in weeks_data %}
+    <div class="week">
+        {% for day in week %}
+            <div class="day
+                {% if day.is_available %} available{% endif %}
+                {% if day.booked_by_current_user %} booked-by-current-user{% endif %}
+                {% if day.booked_by_other_user %} booked-by-other-user{% endif %}">
+                {{ day.date }}
+            </div>
+        {% endfor %}
+    </div>
+{% endfor %}
